@@ -4,7 +4,7 @@
 ```shell
     cd custom_nodes
     git clone https://github.com/lldacing/ComfyUI_BiRefNet_ll.git
-    cd custom_nodes/ComfyUI_BiRefNet_ll
+    cd ComfyUI_BiRefNet_ll
     pip install -r requirements.txt
     # restart ComfyUI
 ```
@@ -22,7 +22,7 @@ The available models are:
 - COD: A pre-trained model for concealed object detection (COD).
 - DIS-TR_TEs: A pre-trained model with massive dataset.
 
-Model files go here (automatically downloaded if the folder is not present during first run): `models/BiRefNet`.  
+Model files go here (when use AutoDownloadBiRefNetModel automatically downloaded if the folder is not present during first run): `models/BiRefNet`.  
 
 If necessary, they can be downloaded from:
 - [General](https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `General.safetensors`
