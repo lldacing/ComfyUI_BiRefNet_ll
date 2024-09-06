@@ -1,9 +1,10 @@
 import os
 import math
 
-CUR_DIR = os.path.dirname(__file__)
+# CUR_DIR = os.path.dirname(__file__)
 
-class Config():
+
+class Config:
     def __init__(self, bb_index: int = 6) -> None:
         # PATH settings
         # Make up your file system as: SYS_HOME_DIR/codes/dis/BiRefNet, SYS_HOME_DIR/datasets/dis/xx, SYS_HOME_DIR/weights/xx

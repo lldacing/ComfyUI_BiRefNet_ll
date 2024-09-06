@@ -6,12 +6,9 @@ from torch.hub import download_url_to_file
 import comfy
 from comfy import model_management
 import folder_paths
-from birefnet.config import Config
 from birefnet.models.birefnet import BiRefNet
 from birefnet.utils import check_state_dict
 from .util import tensor_to_pil, apply_mask_to_image
-
-config = Config()
 
 deviceType = model_management.get_torch_device().type
 
@@ -193,13 +190,13 @@ class RembgByBiRefNet:
 
 
 NODE_CLASS_MAPPINGS = {
-    "LoadBiRefNetModelByName": AutoDownloadBiRefNetModel,
+    "AutoDownloadBiRefNetModel": AutoDownloadBiRefNetModel,
     "LoadRembgByBiRefNetModel": LoadRembgByBiRefNetModel,
     "RembgByBiRefNet": RembgByBiRefNet,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LoadBiRefNetModelByName": "LoadBiRefNetModelByName",
+    "AutoDownloadBiRefNetModel": "AutoDownloadBiRefNetModel",
     "LoadRembgByBiRefNetModel": "LoadRembgByBiRefNetModel",
     "RembgByBiRefNet": "RembgByBiRefNet",
 }
