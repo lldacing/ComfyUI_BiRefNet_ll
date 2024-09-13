@@ -28,7 +28,7 @@
 - COD: 一种用于隐蔽目标检测（COD）的预训练模型。
 - DIS-TR_TEs: 具有大量数据集的预训练模型。
 
-模型文件放在`models/BiRefNet`（当使用AutoDownloadBiRefNetModel时，如果第一次运行时文件夹不存在，则会自动下载.  
+模型文件放在`models/BiRefNet`（当使用AutoDownloadBiRefNetModel时，则会自动下载模型）.  
 
 也可以手动下载模型:
 - [General](https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General.safetensors`
@@ -49,8 +49,8 @@ GitHub上的模型：
 
 ## 权重模型(非必须)
 下载放在`models/BiRefNet`
-- [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)
-- [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms), just General-Lite model
+- [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)（非General-Lite模型）
+- [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)（仅General-Lite模型）
 
 
 ## 节点
