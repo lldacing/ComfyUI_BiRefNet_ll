@@ -1,5 +1,7 @@
-## Example
-![save api extended](example/workflow_base.png)
+[中文文档](README_CN.md)
+## Preview
+![save api extended](doc/base.png)
+![save api extended](doc/video.gif)
 
 ## Install
 
@@ -11,11 +13,12 @@
     pip install -r requirements.txt
     # restart ComfyUI
 ```
+- Via ComfyUI Manager
     
 
 ## Models
 
-The available models are:
+### The available newest models are:
 
 - General: A pre-trained model for general use cases.
 - General-Lite: A light pre-trained model for general use cases.
@@ -36,13 +39,26 @@ If necessary, they can be downloaded from:
 - [COD](https://huggingface.co/ZhengPeng7/BiRefNet-COD/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `COD.safetensors`
 - [DIS-TR_TEs](https://huggingface.co/ZhengPeng7/BiRefNet-DIS5K-TR_TEs/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `DIS-TR_TEs.safetensors`
 
+Some models on GitHub: 
+[BiRefNet Releases](https://github.com/ZhengPeng7/BiRefNet/releases)
+
+### Old models:
+- [BiRefNet-DIS_ep580.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-DIS_ep580.pth)
+- [BiRefNet-ep480.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-ep480.pth)
+
+## Weight Models (Optional)
+- [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)
+- [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms), just General-Lite model
+
 
 ## Nodes
 - AutoDownloadBiRefNetModel
   - Automatically download the model into models/BiRefNet
 - LoadRembgByBiRefNetModel
   - Can select model from "models/BiRefNet" or the path of "birefnet" configured in the extra YAML file
-  - You can download model from [BiRefNet Releases](https://github.com/ZhengPeng7/BiRefNet/releases)
+  - You can download latest models from [BiRefNet Releases](https://github.com/ZhengPeng7/BiRefNet/releases) or old models [BiRefNet-DIS_ep580.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-DIS_ep580.pth) and [BiRefNet-ep480.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-ep480.pth)
+  - When param use_weight is True, need download weight model [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)  
+    model General-Lite must use weight model [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)
 - RembgByBiRefNet
 
 ## Thanks

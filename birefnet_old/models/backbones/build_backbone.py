@@ -1,11 +1,10 @@
 import torch
 import torch.nn as nn
-import safetensors.torch
 from collections import OrderedDict
 from torchvision.models import vgg16, vgg16_bn, VGG16_Weights, VGG16_BN_Weights, resnet50, ResNet50_Weights
-from birefnet.models.backbones.pvt_v2 import pvt_v2_b0, pvt_v2_b1, pvt_v2_b2, pvt_v2_b5
-from birefnet.models.backbones.swin_v1 import swin_v1_t, swin_v1_s, swin_v1_b, swin_v1_l
-from birefnet.config import Config
+from birefnet_old.models.backbones.pvt_v2 import pvt_v2_b0, pvt_v2_b1, pvt_v2_b2, pvt_v2_b5
+from birefnet_old.models.backbones.swin_v1 import swin_v1_t, swin_v1_s, swin_v1_b, swin_v1_l
+from birefnet_old.config import Config
 
 
 config = Config()
@@ -27,8 +26,7 @@ def build_backbone(bb_name, pretrained=True, params_settings=''):
     return bb
 
 def load_weights(model, model_name):
-    # safetensors.torch.load_file
-    save_model = torch.load(config.weights[model_name], map_location='cpu')
+    save_model = torch.load(config.weights[model_name])
     model_dict = model.state_dict()
     state_dict = {k: v if v.size() == model_dict[k].size() else model_dict[k] for k, v in save_model.items() if k in model_dict.keys()}
     # to ignore the weights with mismatched size when I modify the backbone itself.

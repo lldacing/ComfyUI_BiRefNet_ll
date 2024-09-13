@@ -55,3 +55,15 @@ def apply_mask_to_image(image, mask):
     masked_image_with_alpha = torch.cat((masked_image[:, :, :3], alpha.unsqueeze(2)), dim=2)
 
     return masked_image_with_alpha.unsqueeze(0)
+
+
+def normalize_mask(mask_tensor):
+    max_val = torch.max(mask_tensor)
+    min_val = torch.min(mask_tensor)
+
+    if max_val == min_val:
+        return mask_tensor
+
+    normalized_mask = (mask_tensor - min_val) / (max_val - min_val)
+
+    return normalized_mask

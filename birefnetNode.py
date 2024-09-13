@@ -7,8 +7,9 @@ import comfy
 from comfy import model_management
 import folder_paths
 from birefnet.models.birefnet import BiRefNet
+from birefnet_old.models.birefnet import BiRefNet as OldBiRefNet
 from birefnet.utils import check_state_dict
-from .util import tensor_to_pil, apply_mask_to_image
+from .util import tensor_to_pil, apply_mask_to_image, normalize_mask
 
 deviceType = model_management.get_torch_device().type
 
@@ -71,6 +72,16 @@ proc_img = transforms.Compose(
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ]
 )
+old_proc_img = transforms.Compose(
+                [
+                    transforms.Resize((1024, 1024)),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
+                ]
+            )
+
+VERSION = ["old", "v1"]
+old_models_name = ["BiRefNet-DIS_ep580.pth", "BiRefNet-ep480.pth"]
 
 
 class AutoDownloadBiRefNetModel:
@@ -106,7 +117,7 @@ class AutoDownloadBiRefNetModel:
         biRefNet_model.load_state_dict(state_dict)
         biRefNet_model.to(device_type)
         biRefNet_model.eval()
-        return biRefNet_model,
+        return [(biRefNet_model, VERSION[1])]
 
 
 class LoadRembgByBiRefNetModel:
@@ -117,6 +128,9 @@ class LoadRembgByBiRefNetModel:
             "required": {
                 "model": (folder_paths.get_filename_list(models_dir_key),),
                 "device": (["AUTO", "CPU"], )
+            },
+            "optional": {
+                "use_weight": ("BOOLEAN", {"default": False})
             }
         }
 
@@ -126,8 +140,15 @@ class LoadRembgByBiRefNetModel:
     CATEGORY = "rembg/BiRefNet"
     DESCRIPTION = "Load BiRefNet model from folder models/BiRefNet or the path of birefnet configured in the extra YAML file"
 
-    def load_model(self, model, device):
-        biRefNet_model = BiRefNet(bb_pretrained=False, bb_index=6)
+    def load_model(self, model, device, use_weight=False):
+        if model in old_models_name:
+            version = VERSION[0]
+            biRefNet_model = OldBiRefNet(bb_pretrained=use_weight)
+        else:
+            version = VERSION[1]
+            bb_index = 3 if model == "General-Lite.safetensors" else 6
+            biRefNet_model = BiRefNet(bb_pretrained=use_weight, bb_index=bb_index)
+
         model_path = folder_paths.get_full_path(models_dir_key, model)
         if device == "AUTO":
             device_type = deviceType
@@ -142,7 +163,7 @@ class LoadRembgByBiRefNetModel:
         biRefNet_model.load_state_dict(state_dict)
         biRefNet_model.to(device_type)
         biRefNet_model.eval()
-        return [biRefNet_model]
+        return [(biRefNet_model, version)]
 
 
 class RembgByBiRefNet:
@@ -162,6 +183,7 @@ class RembgByBiRefNet:
     CATEGORY = "rembg/BiRefNet"
 
     def rem_bg(self, model, images):
+        model, version = model
         _images = []
         _masks = []
 
@@ -169,7 +191,10 @@ class RembgByBiRefNet:
             h, w, c = image.shape
             pil_image = tensor_to_pil(image)
 
-            im_tensor = proc_img(pil_image).unsqueeze(0)
+            if VERSION[0] == version:
+                im_tensor = old_proc_img(pil_image).unsqueeze(0)
+            else:
+                im_tensor = proc_img(pil_image).unsqueeze(0)
 
             with torch.no_grad():
                 mask = model(im_tensor.to(deviceType))[-1].sigmoid().cpu()
@@ -177,7 +202,8 @@ class RembgByBiRefNet:
             # 遮罩大小需还原为与原图一致
             mask = comfy.utils.common_upscale(mask, w, h, 'bilinear', "disabled")
 
-            # image的mask对应部分设为透明
+            mask = normalize_mask(mask)
+            # image的非mask对应部分设为透明
             image = apply_mask_to_image(image.cpu(), mask.cpu())
 
             _images.append(image)
