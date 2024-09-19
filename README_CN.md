@@ -1,4 +1,7 @@
 [English](README.md)
+
+支持使用新老版本BiRefNet模型进行抠图
+
 ## 预览
 ![save api extended](doc/base.png)
 ![save api extended](doc/video.gif)

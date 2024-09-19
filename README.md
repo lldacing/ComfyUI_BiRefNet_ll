@@ -1,4 +1,7 @@
 [中文文档](README_CN.md)
+
+Support the use of new and old versions of BiRefNet models
+
 ## Preview
 ![save api extended](doc/base.png)
 ![save api extended](doc/video.gif)
