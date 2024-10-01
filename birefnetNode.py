@@ -199,7 +199,7 @@ class RembgByBiRefNet:
             image = apply_mask_to_image(image.cpu(), mask.cpu())
 
             _images.append(image)
-            _masks.append(mask)
+            _masks.append(mask.squeeze(0))
 
         out_images = torch.cat(_images, dim=0)
         out_masks = torch.cat(_masks, dim=0)
