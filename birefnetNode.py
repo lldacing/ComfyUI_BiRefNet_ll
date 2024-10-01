@@ -204,9 +204,6 @@ class RembgByBiRefNet:
         out_images = torch.cat(_images, dim=0)
         out_masks = torch.cat(_masks, dim=0)
 
-        if out_masks.shape[0] == 1:
-            out_masks = out_masks.squeeze(0)
-
         return out_images, out_masks
 
 
