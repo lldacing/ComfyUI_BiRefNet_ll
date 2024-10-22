@@ -25,7 +25,9 @@
 
 - General: 用于一般用例的预训练模型。
 - General-Lite: 用于一般用例的轻量级预训练模型。
+- General-Lite-2K: 用于一般用例的轻量级预训练模型，适用于高分辨率图像。 (最佳分辨率2560x1440).
 - Portrait: 人物肖像预训练模型。
+- Matting: 一种使用无trimap matting的预训练模型。
 - DIS: 一种用于二分图像分割（DIS）的预训练模型。
 - HRSOD: 一种用于高分辨率显著目标检测（HRSOD）的预训练模型。
 - COD: 一种用于隐蔽目标检测（COD）的预训练模型。
@@ -36,7 +38,9 @@
 也可以手动下载模型:
 - [General](https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General.safetensors`
 - [General-Lite](https://huggingface.co/ZhengPeng7/BiRefNet_T/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General-Lite.safetensors`
+- [General-Lite-2K](https://huggingface.co/ZhengPeng7/BiRefNet_lite-2K/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General-Lite-2K.safetensors`
 - [Portrait](https://huggingface.co/ZhengPeng7/BiRefNet-portrait/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `Portrait.safetensors`
+- [Matting](https://huggingface.co/ZhengPeng7/BiRefNet-matting/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `Matting.safetensors`
 - [DIS](https://huggingface.co/ZhengPeng7/BiRefNet-DIS5K/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `DIS.safetensors`
 - [HRSOD](https://huggingface.co/ZhengPeng7/BiRefNet-HRSOD/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `HRSOD.safetensors`
 - [COD](https://huggingface.co/ZhengPeng7/BiRefNet-COD/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `COD.safetensors`
@@ -52,8 +56,8 @@ GitHub上的模型：
 
 ## 权重模型(非必须)
 下载放在`models/BiRefNet`
-- [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)（非General-Lite模型）
-- [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)（仅General-Lite模型）
+- [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)（非General-Lite和General-Lite-2K模型）
+- [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)（仅General-Lite和General-Lite-2K模型）
 
 
 ## 节点

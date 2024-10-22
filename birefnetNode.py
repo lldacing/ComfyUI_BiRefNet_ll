@@ -20,14 +20,16 @@ models_path_default = folder_paths.get_folder_paths(models_dir_key)[0]
 usage_to_weights_file = {
     'General': 'BiRefNet',
     'General-Lite': 'BiRefNet_T',
+    'General-Lite-2K': 'BiRefNet_lite-2K',
     'Portrait': 'BiRefNet-portrait',
+    'Matting': 'BiRefNet-matting',
     'DIS': 'BiRefNet-DIS5K',
     'HRSOD': 'BiRefNet-HRSOD',
     'COD': 'BiRefNet-COD',
     'DIS-TR_TEs': 'BiRefNet-DIS5K-TR_TEs'
 }
 
-modelNameList = ['General', 'General-Lite', 'Portrait', 'DIS', 'HRSOD', 'COD', 'DIS-TR_TEs']
+modelNameList = ['General', 'General-Lite', 'General-Lite-2K', 'Portrait', 'Matting', 'DIS', 'HRSOD', 'COD', 'DIS-TR_TEs']
 
 
 def get_model_path(model_name):
@@ -94,7 +96,7 @@ class AutoDownloadBiRefNetModel:
     DESCRIPTION = "Auto download BiRefNet model from huggingface to models/BiRefNet/{model_name}.safetensors"
 
     def load_model(self, model_name, device):
-        bb_index = 3 if model_name == "General-Lite" else 6
+        bb_index = 3 if model_name == "General-Lite" or model_name == "General-Lite-2K" else 6
         biRefNet_model = BiRefNet(bb_pretrained=False, bb_index=bb_index)
         model_file_name = f'{model_name}.safetensors'
         model_full_path = folder_paths.get_full_path(models_dir_key, model_file_name)
@@ -138,7 +140,7 @@ class LoadRembgByBiRefNetModel:
             biRefNet_model = OldBiRefNet(bb_pretrained=use_weight)
         else:
             version = VERSION[1]
-            bb_index = 3 if model == "General-Lite.safetensors" else 6
+            bb_index = 3 if model == "General-Lite.safetensors" or model == "General-Lite-2K.safetensors" else 6
             biRefNet_model = BiRefNet(bb_pretrained=use_weight, bb_index=bb_index)
 
         model_path = folder_paths.get_full_path(models_dir_key, model)
@@ -199,7 +201,7 @@ class RembgByBiRefNet:
             image = apply_mask_to_image(image.cpu(), mask.cpu())
 
             _images.append(image)
-            _masks.append(mask)
+            _masks.append(mask.squeeze(0))
 
         out_images = torch.cat(_images, dim=0)
         out_masks = torch.cat(_masks, dim=0)
