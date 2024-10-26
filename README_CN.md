@@ -33,7 +33,7 @@
 - COD: 一种用于隐蔽目标检测（COD）的预训练模型。
 - DIS-TR_TEs: 具有大量数据集的预训练模型。
 
-模型文件放在`models/BiRefNet`（当使用AutoDownloadBiRefNetModel时，则会自动下载模型）.  
+模型文件放在`${comfyui_rootpath}/models/BiRefNet`（当使用AutoDownloadBiRefNetModel时，则会自动下载模型）.  
 
 也可以手动下载模型:
 - [General](https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General.safetensors`
@@ -62,9 +62,9 @@ GitHub上的模型：
 
 ## 节点
 - AutoDownloadBiRefNetModel
-  - 自动下载模型到 `models/BiRefNet`，不支持权重
+  - 自动下载模型到 `${comfyui_rootpath}/models/BiRefNet`，不支持权重
 - LoadRembgByBiRefNetModel
-  - 从 `models/BiRefNet` 和 在extra YAML 文件中通过`birefnet`配置的路径中选择模型
+  - 从 `${comfyui_rootpath}/models/BiRefNet` 和 在extra YAML 文件中通过`birefnet`配置的路径中选择模型
   - 支持 [BiRefNet Releases](https://github.com/ZhengPeng7/BiRefNet/releases) 中的新模型 和 老的模型[BiRefNet-DIS_ep580.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-DIS_ep580.pth) 与 [BiRefNet-ep480.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-ep480.pth)
   - 参数use_weight设为True时, 需要下载权重模型，General-Lite模型使用[swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)，其它模型使用 [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)  
 - RembgByBiRefNet

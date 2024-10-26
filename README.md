@@ -33,7 +33,7 @@ Support the use of new and old versions of BiRefNet models
 - COD: A pre-trained model for concealed object detection (COD).
 - DIS-TR_TEs: A pre-trained model with massive dataset.
 
-Model files go here (when use AutoDownloadBiRefNetModel automatically downloaded if the folder is not present during first run): `models/BiRefNet`.  
+Model files go here (when use AutoDownloadBiRefNetModel automatically downloaded if the folder is not present during first run): `${comfyui_rootpath}/models/BiRefNet`.  
 
 If necessary, they can be downloaded from:
 - [General](https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `General.safetensors`
@@ -60,9 +60,9 @@ Some models on GitHub:
 
 ## Nodes
 - AutoDownloadBiRefNetModel
-  - Automatically download the model into `models/BiRefNet`, do not support weight model
+  - Automatically download the model into `${comfyui_rootpath}/models/BiRefNet`, do not support weight model
 - LoadRembgByBiRefNetModel
-  - Can select model from `models/BiRefNet` or the path of `birefnet` configured in the extra YAML file
+  - Can select model from `${comfyui_rootpath}/models/BiRefNet` or the path of `birefnet` configured in the extra YAML file
   - You can download latest models from [BiRefNet Releases](https://github.com/ZhengPeng7/BiRefNet/releases) or old models [BiRefNet-DIS_ep580.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-DIS_ep580.pth) and [BiRefNet-ep480.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-ep480.pth)
   - When param use_weight is True, need download weight model [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)  
     model General-Lite must use weight model [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)
