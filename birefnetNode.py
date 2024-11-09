@@ -178,6 +178,7 @@ class RembgByBiRefNet:
 
     def rem_bg(self, model, images):
         model, version = model
+        model_device_type = next(model.parameters()).device.type
         _images = []
         _masks = []
 
@@ -191,7 +192,7 @@ class RembgByBiRefNet:
                 im_tensor = proc_img(pil_image).unsqueeze(0)
 
             with torch.no_grad():
-                mask = model(im_tensor.to(deviceType))[-1].sigmoid().cpu()
+                mask = model(im_tensor.to(model_device_type))[-1].sigmoid().cpu()
 
             # 遮罩大小需还原为与原图一致
             mask = comfy.utils.common_upscale(mask, w, h, 'bilinear', "disabled")
