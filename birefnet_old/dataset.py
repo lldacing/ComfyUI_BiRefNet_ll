@@ -1,5 +1,5 @@
 import os
-import cv2
+# import cv2
 from tqdm import tqdm
 from PIL import Image
 from torch.utils import data

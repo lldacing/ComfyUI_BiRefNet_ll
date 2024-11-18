@@ -2,8 +2,11 @@ import torch
 import torch.nn as nn
 from functools import partial
 
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
+try:
+    # version > 0.6.13
+    from timm.layers import DropPath, to_2tuple, trunc_normal_
+except Exception:
+    from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
 import math
 

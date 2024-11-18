@@ -71,7 +71,7 @@ GitHub上的模型：
 
 ## 感谢
 
-[BiRefNet](https://github.com/zhengpeng7/birefnet)
+[ZhengPeng7/BiRefNet](https://github.com/zhengpeng7/birefnet)
 
 [dimitribarbot/sd-webui-birefnet](https://github.com/dimitribarbot/sd-webui-birefnet)
 

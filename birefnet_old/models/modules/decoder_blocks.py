@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from birefnet_old.models.modules.aspp import ASPP, ASPPDeformable
-from birefnet_old.models.modules.attentions import PSA, SGE
-from birefnet_old.config import Config
+from ..modules.aspp import ASPP, ASPPDeformable
+from ..modules.attentions import PSA, SGE
+from ...config import Config
 
 
 config = Config()

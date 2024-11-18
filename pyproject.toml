@@ -3,7 +3,7 @@ name = "comfyui_birefnet_ll"
 description = "Sync with version of BiRefNet. NODES:AutoDownloadBiRefNetModel, LoadRembgByBiRefNetModel, RembgByBiRefNet."
 version = "1.0.5"
 license = {file = "LICENSE"}
-dependencies = ["numpy<2", "opencv-python", "scipy", "timm"]
+dependencies = ["numpy", "opencv-python", "timm"]
 
 [project.urls]
 Repository = "https://github.com/lldacing/ComfyUI_BiRefNet_ll"

@@ -70,7 +70,7 @@ Some models on GitHub:
 
 ## Thanks
 
-[BiRefNet](https://github.com/zhengpeng7/birefnet)
+[ZhengPeng7/BiRefNet](https://github.com/zhengpeng7/birefnet)
 
 [dimitribarbot/sd-webui-birefnet](https://github.com/dimitribarbot/sd-webui-birefnet)
 

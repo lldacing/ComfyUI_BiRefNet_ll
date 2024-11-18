@@ -10,9 +10,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 import numpy as np
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+try:
+    # version > 0.6.13
+    from timm.layers import DropPath, to_2tuple, trunc_normal_
+except Exception:
+    from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
-from birefnet_old.config import Config
+from ...config import Config
 
 
 config = Config()

@@ -1,17 +1,31 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from einops import rearrange
 from kornia.filters import laplacian
+from huggingface_hub import PyTorchModelHubMixin
 
-from birefnet.config import Config
-from birefnet.dataset import class_labels_TR_sorted
-from birefnet.models.backbones.build_backbone import build_backbone
-from birefnet.models.modules.decoder_blocks import BasicDecBlk, ResBlk
-from birefnet.models.modules.lateral_blocks import BasicLatBlk
-from birefnet.models.modules.aspp import ASPP, ASPPDeformable
-from birefnet.models.refinement.refiner import Refiner, RefinerPVTInChannels4, RefUNet
-from birefnet.models.refinement.stem_layer import StemLayer
+from ..config import Config
+from ..dataset import class_labels_TR_sorted
+from .backbones.build_backbone import build_backbone
+from .modules.decoder_blocks import BasicDecBlk, ResBlk
+from .modules.lateral_blocks import BasicLatBlk
+from .modules.aspp import ASPP, ASPPDeformable
+from .refinement.refiner import Refiner, RefinerPVTInChannels4, RefUNet
+from .refinement.stem_layer import StemLayer
 
+
+def image2patches(image, grid_h=2, grid_w=2, patch_ref=None, transformation='b c (hg h) (wg w) -> (b hg wg) c h w'):
+    if patch_ref is not None:
+        grid_h, grid_w = image.shape[-2] // patch_ref.shape[-2], image.shape[-1] // patch_ref.shape[-1]
+    patches = rearrange(image, transformation, hg=grid_h, wg=grid_w)
+    return patches
+
+def patches2image(patches, grid_h=2, grid_w=2, patch_ref=None, transformation='(b hg wg) c h w -> b c (hg h) (wg w)'):
+    if patch_ref is not None:
+        grid_h, grid_w = patch_ref.shape[-2] // patches[0].shape[-2], patch_ref.shape[-1] // patches[0].shape[-1]
+    image = rearrange(patches, transformation, hg=grid_h, wg=grid_w)
+    return image
 
 class BiRefNet(nn.Module):
     def __init__(self, bb_pretrained=True, bb_index=6):
@@ -159,18 +173,6 @@ class Decoder(nn.Module):
                 self.gdt_convs_attn_3 = nn.Sequential(nn.Conv2d(_N, 1, 1, 1, 0))
                 self.gdt_convs_attn_2 = nn.Sequential(nn.Conv2d(_N, 1, 1, 1, 0))
 
-    def get_patches_batch(self, x, p):
-        _size_h, _size_w = p.shape[2:]
-        patches_batch = []
-        for idx in range(x.shape[0]):
-            columns_x = torch.split(x[idx], split_size_or_sections=_size_w, dim=-1)
-            patches_x = []
-            for column_x in columns_x:
-                patches_x += [p.unsqueeze(0) for p in torch.split(column_x, split_size_or_sections=_size_h, dim=-2)]
-            patch_sample = torch.cat(patches_x, dim=1)
-            patches_batch.append(patch_sample)
-        return torch.cat(patches_batch, dim=0)
-
     def forward(self, features):
         if self.training and self.config.out_ref:
             outs_gdt_pred = []
@@ -181,7 +183,7 @@ class Decoder(nn.Module):
         outs = []
 
         if self.config.dec_ipt:
-            patches_batch = self.get_patches_batch(x, x4) if self.split else x
+            patches_batch = image2patches(x, patch_ref=x4, transformation='b c (hg h) (wg w) -> b (c hg wg) h w') if self.split else x
             x4 = torch.cat((x4, self.ipt_blk5(F.interpolate(patches_batch, size=x4.shape[2:], mode='bilinear', align_corners=True))), 1)
         p4 = self.decoder_block4(x4)
         m4 = self.conv_ms_spvn_4(p4) if self.config.ms_supervision and self.training else None
@@ -202,7 +204,7 @@ class Decoder(nn.Module):
         _p3 = _p4 + self.lateral_block4(x3)
 
         if self.config.dec_ipt:
-            patches_batch = self.get_patches_batch(x, _p3) if self.split else x
+            patches_batch = image2patches(x, patch_ref=_p3, transformation='b c (hg h) (wg w) -> b (c hg wg) h w') if self.split else x
             _p3 = torch.cat((_p3, self.ipt_blk4(F.interpolate(patches_batch, size=x3.shape[2:], mode='bilinear', align_corners=True))), 1)
         p3 = self.decoder_block3(_p3)
         m3 = self.conv_ms_spvn_3(p3) if self.config.ms_supervision and self.training else None
@@ -228,7 +230,7 @@ class Decoder(nn.Module):
         _p2 = _p3 + self.lateral_block3(x2)
 
         if self.config.dec_ipt:
-            patches_batch = self.get_patches_batch(x, _p2) if self.split else x
+            patches_batch = image2patches(x, patch_ref=_p2, transformation='b c (hg h) (wg w) -> b (c hg wg) h w') if self.split else x
             _p2 = torch.cat((_p2, self.ipt_blk3(F.interpolate(patches_batch, size=x2.shape[2:], mode='bilinear', align_corners=True))), 1)
         p2 = self.decoder_block2(_p2)
         m2 = self.conv_ms_spvn_2(p2) if self.config.ms_supervision and self.training else None
@@ -249,13 +251,13 @@ class Decoder(nn.Module):
         _p1 = _p2 + self.lateral_block2(x1)
 
         if self.config.dec_ipt:
-            patches_batch = self.get_patches_batch(x, _p1) if self.split else x
+            patches_batch = image2patches(x, patch_ref=_p1, transformation='b c (hg h) (wg w) -> b (c hg wg) h w') if self.split else x
             _p1 = torch.cat((_p1, self.ipt_blk2(F.interpolate(patches_batch, size=x1.shape[2:], mode='bilinear', align_corners=True))), 1)
         _p1 = self.decoder_block1(_p1)
         _p1 = F.interpolate(_p1, size=x.shape[2:], mode='bilinear', align_corners=True)
 
         if self.config.dec_ipt:
-            patches_batch = self.get_patches_batch(x, _p1) if self.split else x
+            patches_batch = image2patches(x, patch_ref=_p1, transformation='b c (hg h) (wg w) -> b (c hg wg) h w') if self.split else x
             _p1 = torch.cat((_p1, self.ipt_blk1(F.interpolate(patches_batch, size=x.shape[2:], mode='bilinear', align_corners=True))), 1)
         p1_out = self.conv_out1(_p1)
 
@@ -277,3 +279,60 @@ class SimpleConvs(nn.Module):
 
     def forward(self, x):
         return self.conv_out(self.conv1(x))
+
+
+###########
+
+
+class BiRefNetC2F(
+    nn.Module,
+    PyTorchModelHubMixin,
+    library_name="birefnet_c2f",
+    repo_url="https://github.com/ZhengPeng7/BiRefNet_C2F",
+    tags=['Image Segmentation', 'Background Removal', 'Mask Generation', 'Dichotomous Image Segmentation', 'Camouflaged Object Detection', 'Salient Object Detection']
+):
+    def __init__(self, bb_pretrained=True):
+        super(BiRefNetC2F, self).__init__()
+        self.config = Config()
+        self.epoch = 1
+        self.grid = 4
+        self.model_coarse = BiRefNet(bb_pretrained=True)
+        self.model_fine = BiRefNet(bb_pretrained=True)
+        self.input_mixer = nn.Conv2d(4, 3, 1, 1, 0)
+        self.output_mixer_merge_post = nn.Sequential(nn.Conv2d(1, 16, 3, 1, 1), nn.Conv2d(16, 1, 3, 1, 1))
+
+    def forward(self, x):
+        x_ori = x.clone()
+        ########## Coarse ##########
+        x = F.interpolate(x, size=[s//self.grid for s in self.config.size[::-1]], mode='bilinear', align_corners=True)
+
+        if self.training:
+            scaled_preds, class_preds_lst = self.model_coarse(x)
+        else:
+            scaled_preds = self.model_coarse(x)
+        ##########  Fine  ##########
+        x_HR_patches = image2patches(x_ori, patch_ref=x, transformation='b c (hg h) (wg w) -> (b hg wg) c h w')
+        pred = F.interpolate(scaled_preds[-1] if not (self.config.out_ref and self.training) else scaled_preds[1][-1], size=x_ori.shape[2:], mode='bilinear', align_corners=True)
+        pred_patches = image2patches(pred, patch_ref=x, transformation='b c (hg h) (wg w) -> (b hg wg) c h w')
+        t = torch.cat([x_HR_patches, pred_patches], dim=1)
+        x_HR = self.input_mixer(t)
+
+        pred_patches = image2patches(pred, patch_ref=x_HR, transformation='b c (hg h) (wg w) -> b (c hg wg) h w')
+        if self.training:
+            scaled_preds_HR, class_preds_lst_HR = self.model_fine(x_HR)
+        else:
+            scaled_preds_HR = self.model_fine(x_HR)
+        if self.training:
+            if self.config.out_ref:
+                [outs_gdt_pred, outs_gdt_label], outs = scaled_preds
+                [outs_gdt_pred_HR, outs_gdt_label_HR], outs_HR = scaled_preds_HR
+                for idx_out, out_HR in enumerate(outs_HR):
+                    outs_HR[idx_out] = self.output_mixer_merge_post(patches2image(out_HR, grid_h=self.grid, grid_w=self.grid, transformation='(b hg wg) c h w -> b c (hg h) (wg w)'))
+                return [([outs_gdt_pred + outs_gdt_pred_HR, outs_gdt_label + outs_gdt_label_HR], outs + outs_HR), class_preds_lst]    # handle gt here
+            else:
+                return [
+                    scaled_preds + [self.output_mixer_merge_post(patches2image(scaled_pred_HR, grid_h=self.grid, grid_w=self.grid, transformation='(b hg wg) c h w -> b c (hg h) (wg w)')) for scaled_pred_HR in scaled_preds_HR],
+                    class_preds_lst
+                ]
+        else:
+            return scaled_preds + [self.output_mixer_merge_post(patches2image(scaled_pred_HR, grid_h=self.grid, grid_w=self.grid, transformation='(b hg wg) c h w -> b c (hg h) (wg w)')) for scaled_pred_HR in scaled_preds_HR]
