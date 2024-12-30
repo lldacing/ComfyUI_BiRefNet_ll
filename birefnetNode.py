@@ -179,33 +179,22 @@ class RembgByBiRefNet:
     def rem_bg(self, model, images):
         model, version = model
         model_device_type = next(model.parameters()).device.type
-        _images = []
-        _masks = []
+        b, h, w, c = images.shape
+        image_bchw = images.permute(0, 3, 1, 2)
 
-        for image in images:
-            h, w, c = image.shape
-            pil_image = tensor_to_pil(image)
+        if VERSION[0] == version:
+            im_tensor = old_proc_img(image_bchw)
+        else:
+            im_tensor = proc_img(image_bchw)
 
-            if VERSION[0] == version:
-                im_tensor = old_proc_img(pil_image).unsqueeze(0)
-            else:
-                im_tensor = proc_img(pil_image).unsqueeze(0)
+        with torch.no_grad():
+            mask_bchw = model(im_tensor.to(model_device_type))[-1].sigmoid().cpu()
 
-            with torch.no_grad():
-                mask = model(im_tensor.to(model_device_type))[-1].sigmoid().cpu()
-
-            # 遮罩大小需还原为与原图一致
-            mask = comfy.utils.common_upscale(mask, w, h, 'bilinear', "disabled")
-
-            mask = normalize_mask(mask)
-            # image的非mask对应部分设为透明
-            image = apply_mask_to_image(image.cpu(), mask.cpu())
-
-            _images.append(image)
-            _masks.append(mask.squeeze(0))
-
-        out_images = torch.cat(_images, dim=0)
-        out_masks = torch.cat(_masks, dim=0)
+        # 遮罩大小需还原为与原图一致
+        mask = comfy.utils.common_upscale(mask_bchw, w, h, 'bilinear', "disabled").squeeze(1)
+        out_masks = normalize_mask(mask)
+        # image的非mask对应部分设为透明
+        out_images = add_mask_as_alpha(images.clone().cpu(), mask.cpu())
 
         return out_images, out_masks
 
