@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from PIL import Image
+import torchvision.transforms.v2 as T
 
 
 def tensor_to_pil(image):
@@ -9,6 +10,41 @@ def tensor_to_pil(image):
 
 def pil_to_tensor(image):
     return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
+
+
+def refine_foreground(image_tensor, mask_tensor, r1=90, r2=7):
+    if r1 % 2 == 0:
+        r1 += 1
+
+    if r2 % 2 == 0:
+        r2 += 1
+
+    estimated_foreground = FB_blur_fusion_foreground_estimator_2(image_tensor, mask_tensor, r1=r1, r2=r2)
+    return estimated_foreground
+
+
+def FB_blur_fusion_foreground_estimator_2(image_tensor, alpha_tensor, r1=90, r2=7):
+    # https://github.com/Photoroom/fast-foreground-estimation
+    if alpha_tensor.dim() == 3:
+        alpha_tensor = alpha_tensor.unsqueeze(0)  # Add batch
+    F, blur_B = FB_blur_fusion_foreground_estimator(image_tensor, image_tensor, image_tensor, alpha_tensor, r=r1)
+    return FB_blur_fusion_foreground_estimator(image_tensor, F, blur_B, alpha_tensor, r=r2)[0]
+
+
+def FB_blur_fusion_foreground_estimator(image_tensor, F_tensor, B_tensor, alpha_tensor, r=90):
+    if image_tensor.dim() == 3:
+        image_tensor = image_tensor.unsqueeze(0)
+
+    blurred_alpha = T.functional.gaussian_blur(alpha_tensor, r)
+
+    blurred_FA = T.functional.gaussian_blur(F_tensor * alpha_tensor, r)
+    blurred_F = blurred_FA / (blurred_alpha + 1e-5)
+
+    blurred_B1A = T.functional.gaussian_blur(B_tensor * (1 - alpha_tensor), r)
+    blurred_B = blurred_B1A / ((1 - blurred_alpha) + 1e-5)
+    F_tensor = blurred_F + alpha_tensor * (image_tensor - alpha_tensor * blurred_F - (1 - alpha_tensor) * blurred_B)
+    F_tensor = torch.clamp(F_tensor, 0, 1)
+    return F_tensor, blurred_B
 
 
 def apply_mask_to_image(image, mask):

@@ -9,8 +9,7 @@ import folder_paths
 from birefnet.models.birefnet import BiRefNet
 from birefnet_old.models.birefnet import BiRefNet as OldBiRefNet
 from birefnet.utils import check_state_dict
-from .util import tensor_to_pil, apply_mask_to_image, normalize_mask
-
+from .util import tensor_to_pil, apply_mask_to_image, normalize_mask, refine_foreground
 deviceType = model_management.get_torch_device().type
 
 models_dir_key = "birefnet"
@@ -58,21 +57,26 @@ def download_birefnet_model(model_name):
     )
     download_models(model_root, model_urls)
 
+class ImagePreprocessor():
+    def __init__(self, resolution) -> None:
+        self.transform_image = transforms.Compose([
+            transforms.Resize(resolution),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ])
+        self.transform_image_old = transforms.Compose([
+            transforms.Resize(resolution),
+            transforms.ToTensor(),
+            transforms.Normalize([0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
+        ])
 
-proc_img = transforms.Compose(
-    [
-        transforms.Resize((1024, 1024)),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ]
-)
-old_proc_img = transforms.Compose(
-                [
-                    transforms.Resize((1024, 1024)),
-                    transforms.ToTensor(),
-                    transforms.Normalize([0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
-                ]
-            )
+    def proc(self, image) -> torch.Tensor:
+        image = self.transform_image(image)
+        return image
+
+    def old_proc(self, image) -> torch.Tensor:
+        image = self.transform_image_old(image)
+        return image
 
 VERSION = ["old", "v1"]
 old_models_name = ["BiRefNet-DIS_ep580.pth", "BiRefNet-ep480.pth"]
@@ -160,7 +164,101 @@ class LoadRembgByBiRefNetModel:
         return [(biRefNet_model, version)]
 
 
-class RembgByBiRefNet:
+class RembgByBiRefNetAdvanced:
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model": ("BiRefNetMODEL",),
+                "images": ("IMAGE",),
+                "width": ("INT",
+                          {
+                              "default": 1024,
+                              "min": 0,
+                              "max": 16384,
+                              "tooltip": "The width of the preprocessed image, does not affect the final output image size"
+                          }),
+                "height": ("INT",
+                           {
+                               "default": 1024,
+                               "min": 0,
+                               "max": 16384,
+                               "tooltip": "The height of the preprocessed image, does not affect the final output image size"
+                           }),
+                "upscale_method": (["bislerp", "nearest-exact", "bilinear", "area", "bicubic"],
+                                   {
+                                       "default": "bilinear",
+                                       "tooltip": "Interpolation method for post-processing mask"
+                                   }),
+                "blur_size": ("INT", {"default": 91, "min": 1, "max": 255, "step": 2, }),
+                "blur_size_two": ("INT", {"default": 7, "min": 1, "max": 255, "step": 2, }),
+                "fill_color": ("BOOLEAN", {"default": False}),
+                "color": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFF, "step": 1, "display": "color"}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE", "MASK",)
+    RETURN_NAMES = ("image", "mask",)
+    FUNCTION = "rem_bg"
+    CATEGORY = "rembg/BiRefNet"
+
+    def rem_bg(self, model, images, upscale_method='bilinear', width=1024, height=1024, blur_size=91, blur_size_two=7, fill_color=False, color=None):
+        model, version = model
+        model_device_type = next(model.parameters()).device.type
+        _images = []
+        _masks = []
+
+        for image in images:
+            h, w, c = image.shape
+            pil_image = tensor_to_pil(image)
+
+            image_preproc = ImagePreprocessor(resolution=(width, height))
+            if VERSION[0] == version:
+                im_tensor = image_preproc.old_proc(pil_image).unsqueeze(0)
+            else:
+                im_tensor = image_preproc.proc(pil_image).unsqueeze(0)
+
+            del image_preproc
+
+            with torch.no_grad():
+                mask = model(im_tensor.to(model_device_type))[-1].sigmoid().cpu()
+
+            # 遮罩大小需还原为与原图一致
+            mask = comfy.utils.common_upscale(mask, w, h, upscale_method, "disabled")
+
+            # (1, 1, h, w)
+            mask = normalize_mask(mask)
+            # (c, h, w) => (c, h, w)
+            _image_masked = refine_foreground(image.permute(2, 0, 1), mask.squeeze(0), r1=blur_size, r2=blur_size_two).squeeze(0)
+            # (c, h, w) => (h, w, c)
+            _image_masked = _image_masked.permute(1, 2, 0)
+            if fill_color and color is not None:
+                r = torch.full([h, w, 1], ((color >> 16) & 0xFF) / 0xFF)
+                g = torch.full([h, w, 1], ((color >> 8) & 0xFF) / 0xFF)
+                b = torch.full([h, w, 1], (color & 0xFF) / 0xFF)
+                # (h, w, 3)
+                background_color = torch.cat((r, g, b), dim=-1)
+                # (h, w, 1)
+                apply_mask = mask.squeeze(0).permute(1, 2, 0).expand_as(_image_masked)
+                _image_masked = _image_masked * apply_mask + background_color * (1 - apply_mask)
+                # (h, w, 3)=>(1, h, w,3)
+                image = _image_masked.unsqueeze(0)
+                del background_color, apply_mask
+            else:
+                # image的非mask对应部分设为透明 => (1, h, w, 4)
+                image = apply_mask_to_image(_image_masked.cpu(), mask.cpu())
+
+            _images.append(image)
+            _masks.append(mask.squeeze(0))
+
+        out_images = torch.cat(_images, dim=0)
+        out_masks = torch.cat(_masks, dim=0)
+
+        return out_images, out_masks
+
+
+class RembgByBiRefNet(RembgByBiRefNetAdvanced):
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -177,47 +275,19 @@ class RembgByBiRefNet:
     CATEGORY = "rembg/BiRefNet"
 
     def rem_bg(self, model, images):
-        model, version = model
-        model_device_type = next(model.parameters()).device.type
-        _images = []
-        _masks = []
-
-        for image in images:
-            h, w, c = image.shape
-            pil_image = tensor_to_pil(image)
-
-            if VERSION[0] == version:
-                im_tensor = old_proc_img(pil_image).unsqueeze(0)
-            else:
-                im_tensor = proc_img(pil_image).unsqueeze(0)
-
-            with torch.no_grad():
-                mask = model(im_tensor.to(model_device_type))[-1].sigmoid().cpu()
-
-            # 遮罩大小需还原为与原图一致
-            mask = comfy.utils.common_upscale(mask, w, h, 'bilinear', "disabled")
-
-            mask = normalize_mask(mask)
-            # image的非mask对应部分设为透明
-            image = apply_mask_to_image(image.cpu(), mask.cpu())
-
-            _images.append(image)
-            _masks.append(mask.squeeze(0))
-
-        out_images = torch.cat(_images, dim=0)
-        out_masks = torch.cat(_masks, dim=0)
-
-        return out_images, out_masks
+        return super().rem_bg(model, images)
 
 
 NODE_CLASS_MAPPINGS = {
     "AutoDownloadBiRefNetModel": AutoDownloadBiRefNetModel,
     "LoadRembgByBiRefNetModel": LoadRembgByBiRefNetModel,
     "RembgByBiRefNet": RembgByBiRefNet,
+    "RembgByBiRefNetAdvanced": RembgByBiRefNetAdvanced,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "AutoDownloadBiRefNetModel": "AutoDownloadBiRefNetModel",
     "LoadRembgByBiRefNetModel": "LoadRembgByBiRefNetModel",
     "RembgByBiRefNet": "RembgByBiRefNet",
+    "RembgByBiRefNetAdvanced": "RembgByBiRefNetAdvanced",
 }
