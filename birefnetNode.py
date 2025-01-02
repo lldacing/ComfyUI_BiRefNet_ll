@@ -62,14 +62,14 @@ def download_birefnet_model(model_name):
 proc_img = transforms.Compose(
     [
         transforms.Resize((1024, 1024)),
-        transforms.ToTensor(),
+        # transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ]
 )
 old_proc_img = transforms.Compose(
                 [
                     transforms.Resize((1024, 1024)),
-                    transforms.ToTensor(),
+                    # transforms.ToTensor(),
                     transforms.Normalize([0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
                 ]
             )
