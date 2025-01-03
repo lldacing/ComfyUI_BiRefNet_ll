@@ -19,8 +19,7 @@ def refine_foreground(image_tensor, mask_tensor, r1=90, r2=7):
     if r2 % 2 == 0:
         r2 += 1
 
-    estimated_foreground = FB_blur_fusion_foreground_estimator_2(image_tensor, mask_tensor, r1=r1, r2=r2)
-    return estimated_foreground
+    return FB_blur_fusion_foreground_estimator_2(image_tensor, mask_tensor, r1=r1, r2=r2)[0]
 
 
 def FB_blur_fusion_foreground_estimator_2(image_tensor, alpha_tensor, r1=90, r2=7):
@@ -28,7 +27,7 @@ def FB_blur_fusion_foreground_estimator_2(image_tensor, alpha_tensor, r1=90, r2=
     if alpha_tensor.dim() == 3:
         alpha_tensor = alpha_tensor.unsqueeze(0)  # Add batch
     F, blur_B = FB_blur_fusion_foreground_estimator(image_tensor, image_tensor, image_tensor, alpha_tensor, r=r1)
-    return FB_blur_fusion_foreground_estimator(image_tensor, F, blur_B, alpha_tensor, r=r2)[0]
+    return FB_blur_fusion_foreground_estimator(image_tensor, F, blur_B, alpha_tensor, r=r2)
 
 
 def FB_blur_fusion_foreground_estimator(image_tensor, F_tensor, B_tensor, alpha_tensor, r=90):
@@ -103,3 +102,26 @@ def normalize_mask(mask_tensor):
     normalized_mask = (mask_tensor - min_val) / (max_val - min_val)
 
     return normalized_mask
+
+def add_mask_as_alpha(image, mask):
+    """
+    将 (b, h, w) 形状的 mask 添加为 (b, h, w, 3) 形状的 image 的第 4 个通道（alpha 通道）。
+    """
+    # 检查输入形状
+    assert image.dim() == 4 and image.size(-1) == 3, "The shape of image should be (b, h, w, 3)."
+    assert mask.dim() == 3, "The shape of mask should be (b, h, w)"
+    assert image.size(0) == mask.size(0) and image.size(1) == mask.size(1) and image.size(2) == mask.size(2), "The batch, height, and width dimensions of the image and mask must be consistent"
+
+    # 将 mask 扩展为 (b, h, w, 1)
+    mask = mask[..., None]
+
+    image = image * mask
+    # 将 image 和 mask 拼接为 (b, h, w, 4)
+    image_with_alpha = torch.cat([image, mask], dim=-1)
+
+    return image_with_alpha
+
+def filter_mask(mask, threshold=4e-3):
+    mask_binary = mask > threshold
+    filtered_mask = mask * mask_binary
+    return filtered_mask

@@ -1,7 +1,7 @@
 [project]
 name = "comfyui_birefnet_ll"
 description = "Sync with version of BiRefNet. NODES:AutoDownloadBiRefNetModel, LoadRembgByBiRefNetModel, RembgByBiRefNet."
-version = "1.0.6"
+version = "1.0.7"
 license = {file = "LICENSE"}
 dependencies = ["numpy", "opencv-python", "timm"]
 

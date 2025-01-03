@@ -9,7 +9,7 @@ import folder_paths
 from birefnet.models.birefnet import BiRefNet
 from birefnet_old.models.birefnet import BiRefNet as OldBiRefNet
 from birefnet.utils import check_state_dict
-from .util import tensor_to_pil, apply_mask_to_image, normalize_mask, refine_foreground
+from .util import tensor_to_pil, apply_mask_to_image, normalize_mask, refine_foreground, filter_mask, add_mask_as_alpha
 deviceType = model_management.get_torch_device().type
 
 models_dir_key = "birefnet"
@@ -61,12 +61,12 @@ class ImagePreprocessor():
     def __init__(self, resolution) -> None:
         self.transform_image = transforms.Compose([
             transforms.Resize(resolution),
-            transforms.ToTensor(),
+            # transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ])
         self.transform_image_old = transforms.Compose([
             transforms.Resize(resolution),
-            transforms.ToTensor(),
+            # transforms.ToTensor(),
             transforms.Normalize([0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
         ])
 
@@ -195,6 +195,7 @@ class RembgByBiRefNetAdvanced:
                 "blur_size_two": ("INT", {"default": 7, "min": 1, "max": 255, "step": 2, }),
                 "fill_color": ("BOOLEAN", {"default": False}),
                 "color": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFF, "step": 1, "display": "color"}),
+                "mask_threshold": ("FLOAT", {"default": 0.000, "min": 0.0, "max": 1.0, "step": 0.001, }),
             }
         }
 
@@ -203,57 +204,58 @@ class RembgByBiRefNetAdvanced:
     FUNCTION = "rem_bg"
     CATEGORY = "rembg/BiRefNet"
 
-    def rem_bg(self, model, images, upscale_method='bilinear', width=1024, height=1024, blur_size=91, blur_size_two=7, fill_color=False, color=None):
+    def rem_bg(self, model, images, upscale_method='bilinear', width=1024, height=1024, blur_size=91, blur_size_two=7, fill_color=False, color=None, mask_threshold=0.000):
         model, version = model
         model_device_type = next(model.parameters()).device.type
-        _images = []
-        _masks = []
+        b, h, w, c = images.shape
+        image_bchw = images.permute(0, 3, 1, 2)
 
-        for image in images:
-            h, w, c = image.shape
-            pil_image = tensor_to_pil(image)
+        image_preproc = ImagePreprocessor(resolution=(1024, 1024))
+        if VERSION[0] == version:
+            im_tensor = image_preproc.old_proc(image_bchw)
+        else:
+            im_tensor = image_preproc.proc(image_bchw)
 
-            image_preproc = ImagePreprocessor(resolution=(width, height))
-            if VERSION[0] == version:
-                im_tensor = image_preproc.old_proc(pil_image).unsqueeze(0)
-            else:
-                im_tensor = image_preproc.proc(pil_image).unsqueeze(0)
-
-            del image_preproc
-
+        _mask_bchw = []
+        for each_image in im_tensor:
             with torch.no_grad():
-                mask = model(im_tensor.to(model_device_type))[-1].sigmoid().cpu()
+                each_mask = model(each_image.unsqueeze(0).to(model_device_type))[-1].sigmoid().cpu()
+            _mask_bchw.append(each_mask)
+            del each_mask
 
-            # 遮罩大小需还原为与原图一致
-            mask = comfy.utils.common_upscale(mask, w, h, upscale_method, "disabled")
+        mask_bchw = torch.cat(_mask_bchw, dim=0)
+        del _mask_bchw
+        # 遮罩大小需还原为与原图一致
+        mask = comfy.utils.common_upscale(mask_bchw, w, h, 'bilinear', "disabled")
+        # (b, 1, h, w)
+        if mask_threshold > 0:
+            out_masks = filter_mask(mask, threshold=mask_threshold)
+        else:
+            out_masks = normalize_mask(mask)
 
-            # (1, 1, h, w)
-            mask = normalize_mask(mask)
-            # (c, h, w) => (c, h, w)
-            _image_masked = refine_foreground(image.permute(2, 0, 1), mask.squeeze(0), r1=blur_size, r2=blur_size_two).squeeze(0)
-            # (c, h, w) => (h, w, c)
-            _image_masked = _image_masked.permute(1, 2, 0)
-            if fill_color and color is not None:
-                r = torch.full([h, w, 1], ((color >> 16) & 0xFF) / 0xFF)
-                g = torch.full([h, w, 1], ((color >> 8) & 0xFF) / 0xFF)
-                b = torch.full([h, w, 1], (color & 0xFF) / 0xFF)
-                # (h, w, 3)
-                background_color = torch.cat((r, g, b), dim=-1)
-                # (h, w, 1)
-                apply_mask = mask.squeeze(0).permute(1, 2, 0).expand_as(_image_masked)
-                _image_masked = _image_masked * apply_mask + background_color * (1 - apply_mask)
-                # (h, w, 3)=>(1, h, w,3)
-                image = _image_masked.unsqueeze(0)
-                del background_color, apply_mask
-            else:
-                # image的非mask对应部分设为透明 => (1, h, w, 4)
-                image = apply_mask_to_image(_image_masked.cpu(), mask.cpu())
+        # (b, c, h, w)
+        _image_masked = refine_foreground(image_bchw, out_masks, r1=blur_size, r2=blur_size_two)
+        # (b, c, h, w) => (b, h, w, c)
+        _image_masked = _image_masked.permute(0, 2, 3, 1)
+        if fill_color and color is not None:
+            r = torch.full([b, h, w, 1], ((color >> 16) & 0xFF) / 0xFF)
+            g = torch.full([b, h, w, 1], ((color >> 8) & 0xFF) / 0xFF)
+            b = torch.full([b, h, w, 1], (color & 0xFF) / 0xFF)
+            # (b, h, w, 3)
+            background_color = torch.cat((r, g, b), dim=-1)
+            # (b, 1, h, w) => (b, h, w, 3)
+            apply_mask = out_masks.permute(0, 2, 3, 1).expand_as(_image_masked)
+            out_images = _image_masked * apply_mask + background_color * (1 - apply_mask)
+            # (b, h, w, 3)=>(b, h, w, 3)
+            del background_color, apply_mask
+            out_masks = out_masks.squeeze(1)
+        else:
+            # (b, 1, h, w) => (b, h, w)
+            out_masks = out_masks.squeeze(1)
+            # image的非mask对应部分设为透明 => (b, h, w, 4)
+            out_images = add_mask_as_alpha(_image_masked.cpu(), out_masks.cpu())
 
-            _images.append(image)
-            _masks.append(mask.squeeze(0))
-
-        out_images = torch.cat(_images, dim=0)
-        out_masks = torch.cat(_masks, dim=0)
+        del _image_masked
 
         return out_images, out_masks
 
