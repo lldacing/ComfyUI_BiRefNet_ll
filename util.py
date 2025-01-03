@@ -29,13 +29,18 @@ def add_mask_as_alpha(image, mask):
     return image_with_alpha
 
 
-def normalize_mask(mask_tensor):
-    max_val = torch.max(mask_tensor)
-    min_val = torch.min(mask_tensor)
+def normalize_mask(mask):
+    max_val = torch.max(mask)
+    min_val = torch.min(mask)
 
     if max_val == min_val:
-        return mask_tensor
+        return mask
 
-    normalized_mask = (mask_tensor - min_val) / (max_val - min_val)
+    normalized_mask = (mask - min_val) / (max_val - min_val)
 
     return normalized_mask
+
+def filter_mask(mask, threshold=4e-3):
+    mask_binary = mask > threshold
+    filtered_mask = mask * mask_binary
+    return filtered_mask
