@@ -9,7 +9,7 @@ import folder_paths
 from birefnet.models.birefnet import BiRefNet
 from birefnet_old.models.birefnet import BiRefNet as OldBiRefNet
 from birefnet.utils import check_state_dict
-from .util import tensor_to_pil, apply_mask_to_image, normalize_mask
+from .util import tensor_to_pil, add_mask_as_alpha, normalize_mask, filter_mask
 
 deviceType = model_management.get_torch_device().type
 
@@ -193,7 +193,8 @@ class RembgByBiRefNet:
 
         # 遮罩大小需还原为与原图一致
         mask = comfy.utils.common_upscale(mask_bchw, w, h, 'bilinear', "disabled").squeeze(1)
-        out_masks = normalize_mask(mask)
+        norm_masks = normalize_mask(mask)
+        out_masks = filter_mask(mask)
         # image的非mask对应部分设为透明
         out_images = add_mask_as_alpha(images.clone().cpu(), mask.cpu())
 
