@@ -57,15 +57,24 @@ def download_birefnet_model(model_name):
     )
     download_models(model_root, model_urls)
 
-class ImagePreprocessor():
-    def __init__(self, resolution) -> None:
+interpolation_modes_mapping = {
+    "nearest": 0,
+    "bilinear": 2,
+    "bicubic": 3,
+    "nearest-exact": 0,
+    # "lanczos": 1, #不支持
+}
+
+class ImagePreprocessor:
+    def __init__(self, resolution, upscale_method="bilinear") -> None:
+        interpolation = interpolation_modes_mapping.get(upscale_method, 2)
         self.transform_image = transforms.Compose([
-            transforms.Resize(resolution),
+            transforms.Resize(resolution, interpolation=interpolation),
             # transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ])
         self.transform_image_old = transforms.Compose([
-            transforms.Resize(resolution),
+            transforms.Resize(resolution, interpolation=interpolation),
             # transforms.ToTensor(),
             transforms.Normalize([0.5, 0.5, 0.5], [1.0, 1.0, 1.0]),
         ])
@@ -177,19 +186,19 @@ class GetMaskByBiRefNet:
                               "default": 1024,
                               "min": 0,
                               "max": 16384,
-                              "tooltip": "The width of the preprocessed image, does not affect the final output image size"
+                              "tooltip": "The width of the pre-processing image, does not affect the final output image size"
                           }),
                 "height": ("INT",
                            {
                                "default": 1024,
                                "min": 0,
                                "max": 16384,
-                               "tooltip": "The height of the preprocessed image, does not affect the final output image size"
+                               "tooltip": "The height of the pre-processing image, does not affect the final output image size"
                            }),
-                "upscale_method": (["bislerp", "nearest-exact", "bilinear", "area", "bicubic"],
+                "upscale_method": (["bilinear", "nearest", "nearest-exact", "bicubic"],
                                    {
                                        "default": "bilinear",
-                                       "tooltip": "Interpolation method for post-processing mask"
+                                       "tooltip": "Interpolation method for pre-processing image and post-processing mask"
                                    }),
                 "mask_threshold": ("FLOAT", {"default": 0.000, "min": 0.0, "max": 1.0, "step": 0.004, }),
             }
@@ -206,11 +215,13 @@ class GetMaskByBiRefNet:
         b, h, w, c = images.shape
         image_bchw = images.permute(0, 3, 1, 2)
 
-        image_preproc = ImagePreprocessor(resolution=(height, width))
+        image_preproc = ImagePreprocessor(resolution=(height, width), upscale_method=upscale_method)
         if VERSION[0] == version:
             im_tensor = image_preproc.old_proc(image_bchw)
         else:
             im_tensor = image_preproc.proc(image_bchw)
+
+        del image_preproc
 
         _mask_bchw = []
         for each_image in im_tensor:
@@ -305,19 +316,19 @@ class RembgByBiRefNetAdvanced(GetMaskByBiRefNet, BlurFusionForegroundEstimation)
                               "default": 1024,
                               "min": 0,
                               "max": 16384,
-                              "tooltip": "The width of the preprocessed image, does not affect the final output image size"
+                              "tooltip": "The width of the pre-processing image, does not affect the final output image size"
                           }),
                 "height": ("INT",
                            {
                                "default": 1024,
                                "min": 0,
                                "max": 16384,
-                               "tooltip": "The height of the preprocessed image, does not affect the final output image size"
+                               "tooltip": "The height of the pre-processing image, does not affect the final output image size"
                            }),
-                "upscale_method": (["bislerp", "nearest-exact", "bilinear", "area", "bicubic"],
+                "upscale_method": (["bilinear", "nearest", "nearest-exact", "bicubic"],
                                    {
                                        "default": "bilinear",
-                                       "tooltip": "Interpolation method for post-processing mask"
+                                       "tooltip": "Interpolation method for pre-processing image and post-processing mask"
                                    }),
                 "blur_size": ("INT", {"default": 91, "min": 1, "max": 255, "step": 2, }),
                 "blur_size_two": ("INT", {"default": 7, "min": 1, "max": 255, "step": 2, }),
