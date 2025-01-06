@@ -102,7 +102,7 @@ class AutoDownloadBiRefNetModel:
             }
         }
 
-    RETURN_TYPES = ("BiRefNetMODEL",)
+    RETURN_TYPES = ("BIREFNET",)
     RETURN_NAMES = ("model",)
     FUNCTION = "load_model"
     CATEGORY = "image/BiRefNet"
@@ -141,7 +141,7 @@ class LoadRembgByBiRefNetModel:
             }
         }
 
-    RETURN_TYPES = ("BiRefNetMODEL",)
+    RETURN_TYPES = ("BIREFNET",)
     RETURN_NAMES = ("model",)
     FUNCTION = "load_model"
     CATEGORY = "rembg/BiRefNet"
@@ -179,7 +179,7 @@ class GetMaskByBiRefNet:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model": ("BiRefNetMODEL",),
+                "model": ("BIREFNET",),
                 "images": ("IMAGE",),
                 "width": ("INT",
                           {
@@ -309,7 +309,7 @@ class RembgByBiRefNetAdvanced(GetMaskByBiRefNet, BlurFusionForegroundEstimation)
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model": ("BiRefNetMODEL",),
+                "model": ("BIREFNET",),
                 "images": ("IMAGE",),
                 "width": ("INT",
                           {
@@ -358,7 +358,7 @@ class RembgByBiRefNet(RembgByBiRefNetAdvanced):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model": ("BiRefNetMODEL",),
+                "model": ("BIREFNET",),
                 "images": ("IMAGE",),
             }
         }
