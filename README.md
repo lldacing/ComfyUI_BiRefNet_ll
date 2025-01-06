@@ -2,6 +2,9 @@
 
 Support the use of new and old versions of BiRefNet models
 
+## Important
+Due to the standardization of naming in [PR-14](https://github.com/lldacing/ComfyUI_BiRefNet_ll/pull/14), the old workflow needs to add nodes again, which has no impact on the API JSON format workflow
+
 ## Preview
 ![save api extended](doc/base.png)
 ![save api extended](doc/video.gif)
@@ -67,6 +70,13 @@ Some models on GitHub:
   - When param use_weight is True, need download weight model [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)  
     model General-Lite must use weight model [swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)
 - RembgByBiRefNet
+  - Output transparent foreground image and mask
+- RembgByBiRefNetAdvanced
+  - Output foreground image and mask, provide some fine-tuning parameters
+- GetMaskByBiRefNet
+  - Only output mask
+- BlurFusionForegroundEstimation
+  - Use the [fast-foreground-estimation method](https://github.com/Photoroom/fast-foreground-estimation) to estimate the foreground image
 
 ## Thanks
 

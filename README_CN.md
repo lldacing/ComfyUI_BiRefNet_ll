@@ -2,6 +2,9 @@
 
 支持使用新老版本BiRefNet模型进行抠图
 
+## 重要
+在[PR-14](https://github.com/lldacing/ComfyUI_BiRefNet_ll/pull/14)对命名进行了规范化，旧工作流需要重新添加节点，对api json格式工作流无影响
+
 ## 预览
 ![save api extended](doc/base.png)
 ![save api extended](doc/video.gif)
@@ -68,6 +71,13 @@ GitHub上的模型：
   - 支持 [BiRefNet Releases](https://github.com/ZhengPeng7/BiRefNet/releases) 中的新模型 和 老的模型[BiRefNet-DIS_ep580.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-DIS_ep580.pth) 与 [BiRefNet-ep480.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/BiRefNet-ep480.pth)
   - 参数use_weight设为True时, 需要下载权重模型，General-Lite模型使用[swin_tiny_patch4_window7_224_22kto1k_finetune.pth](https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms)，其它模型使用 [swin_large_patch4_window12_384_22kto1k.pth](https://huggingface.co/ViperYX/BiRefNet/resolve/main/swin_large_patch4_window12_384_22kto1k.pth)  
 - RembgByBiRefNet
+  - 输出透明前景图和遮罩
+- RembgByBiRefNetAdvanced
+  - 输出前景图和遮罩，提供一些微调参数
+- GetMaskByBiRefNet
+  - 仅输出遮罩
+- BlurFusionForegroundEstimation
+  - 使用[fast-foreground-estimation](https://github.com/Photoroom/fast-foreground-estimation)方法预估前景图
 
 ## 感谢
 
