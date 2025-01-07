@@ -2,9 +2,6 @@
 
 支持使用新老版本BiRefNet模型进行抠图
 
-## 重要
-在[PR-14](https://github.com/lldacing/ComfyUI_BiRefNet_ll/pull/14)对命名进行了规范化，旧工作流需要重新添加节点，对api json格式工作流无影响
-
 ## 预览
 ![save api extended](doc/base.png)
 ![save api extended](doc/video.gif)

@@ -2,9 +2,6 @@
 
 Support the use of new and old versions of BiRefNet models
 
-## Important
-Due to the standardization of naming in [PR-14](https://github.com/lldacing/ComfyUI_BiRefNet_ll/pull/14), the old workflow needs to add nodes again, which has no impact on the API JSON format workflow
-
 ## Preview
 ![save api extended](doc/base.png)
 ![save api extended](doc/video.gif)
