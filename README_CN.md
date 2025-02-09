@@ -24,8 +24,9 @@
 ### 最新的模型:
 
 - General: 用于一般用例的预训练模型。
+- General-HR: 用于一般用例的预训练模型，在更高分辨率的图像上表现出色(训练分辨率2048x2048)。
 - General-Lite: 用于一般用例的轻量级预训练模型。
-- General-Lite-2K: 用于一般用例的轻量级预训练模型，适用于高分辨率图像。 (最佳分辨率2560x1440).
+- General-Lite-2K: 用于一般用例的轻量级预训练模型，适用于高分辨率图像(最佳分辨率2560x1440)。
 - Portrait: 人物肖像预训练模型。
 - Matting: 一种使用无trimap matting的预训练模型。
 - DIS: 一种用于二分图像分割（DIS）的预训练模型。
@@ -33,10 +34,11 @@
 - COD: 一种用于隐蔽目标检测（COD）的预训练模型。
 - DIS-TR_TEs: 具有大量数据集的预训练模型。
 
-模型文件放在`${comfyui_rootpath}/models/BiRefNet`（当使用AutoDownloadBiRefNetModel时，则会自动下载模型）.  
+模型文件放在`${comfyui_rootpath}/models/BiRefNet`（当使用AutoDownloadBiRefNetModel时，则会自动下载模型）。
 
 也可以手动下载模型:
 - [General](https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General.safetensors`
+- [General-HR](https://huggingface.co/ZhengPeng7/BiRefNet_HR/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General-HR.safetensors`
 - [General-Lite](https://huggingface.co/ZhengPeng7/BiRefNet_T/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General-Lite.safetensors`
 - [General-Lite-2K](https://huggingface.co/ZhengPeng7/BiRefNet_lite-2K/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `General-Lite-2K.safetensors`
 - [Portrait](https://huggingface.co/ZhengPeng7/BiRefNet-portrait/resolve/main/model.safetensors) ➔ `model.safetensors` 重命名为 `Portrait.safetensors`

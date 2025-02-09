@@ -24,6 +24,7 @@ Support the use of new and old versions of BiRefNet models
 ### The available newest models are:
 
 - General: A pre-trained model for general use cases.
+- General-HR: A pre-trained model for general use cases which shows great performance on higher resolution images (2048x2048).
 - General-Lite: A light pre-trained model for general use cases.
 - General-Lite-2K: A light pre-trained model for general use cases in high resolution (2560x1440).
 - Portrait: A pre-trained model for human portraits.
@@ -37,6 +38,7 @@ Model files go here (when use AutoDownloadBiRefNetModel automatically downloaded
 
 If necessary, they can be downloaded from:
 - [General](https://huggingface.co/ZhengPeng7/BiRefNet/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `General.safetensors`
+- [General-HR](https://huggingface.co/ZhengPeng7/BiRefNet_HR/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `General-HR.safetensors`
 - [General-Lite](https://huggingface.co/ZhengPeng7/BiRefNet_T/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `General-Lite.safetensors`
 - [General-Lite-2K](https://huggingface.co/ZhengPeng7/BiRefNet_lite-2K/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `General-Lite-2K.safetensors`
 - [Portrait](https://huggingface.co/ZhengPeng7/BiRefNet-portrait/resolve/main/model.safetensors) ➔ `model.safetensors` must be renamed `Portrait.safetensors`

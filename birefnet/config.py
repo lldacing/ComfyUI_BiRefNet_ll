@@ -61,7 +61,7 @@ class Config:
                 'DIS5K': -40,
                 'COD': -20,
                 'HRSOD': -20,
-                'General': -40,
+                'General': -20,
                 'General-2K': -20,
                 'Matting': -20,
             }[self.task]
@@ -154,9 +154,6 @@ class Config:
         self.lambdas_cls = {
             'ce': 5.0
         }
-        # Adv
-        self.lambda_adv_g = 10. * 0        # turn to 0 to avoid adv training
-        self.lambda_adv_d = 3. * (self.lambda_adv_g > 0)
 
         # PATH settings - inactive
         # https://drive.google.com/drive/folders/1cmce_emsS8A5ha5XT2c_CZiJzlLM81ms

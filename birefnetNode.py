@@ -9,7 +9,7 @@ import folder_paths
 from birefnet.models.birefnet import BiRefNet
 from birefnet_old.models.birefnet import BiRefNet as OldBiRefNet
 from birefnet.utils import check_state_dict
-from .util import tensor_to_pil, apply_mask_to_image, normalize_mask, refine_foreground, filter_mask, add_mask_as_alpha
+from .util import refine_foreground, filter_mask, add_mask_as_alpha
 deviceType = model_management.get_torch_device().type
 
 models_dir_key = "birefnet"
@@ -18,6 +18,7 @@ models_path_default = folder_paths.get_folder_paths(models_dir_key)[0]
 
 usage_to_weights_file = {
     'General': 'BiRefNet',
+    'General-HR': 'BiRefNet_HR',
     'General-Lite': 'BiRefNet_T',
     'General-Lite-2K': 'BiRefNet_lite-2K',
     'Portrait': 'BiRefNet-portrait',
@@ -28,7 +29,7 @@ usage_to_weights_file = {
     'DIS-TR_TEs': 'BiRefNet-DIS5K-TR_TEs'
 }
 
-modelNameList = ['General', 'General-Lite', 'General-Lite-2K', 'Portrait', 'Matting', 'DIS', 'HRSOD', 'COD', 'DIS-TR_TEs']
+modelNameList = ['General', 'General-HR', 'General-Lite', 'General-Lite-2K', 'Portrait', 'Matting', 'DIS', 'HRSOD', 'COD', 'DIS-TR_TEs']
 
 
 def get_model_path(model_name):
@@ -90,6 +91,11 @@ class ImagePreprocessor:
 VERSION = ["old", "v1"]
 old_models_name = ["BiRefNet-DIS_ep580.pth", "BiRefNet-ep480.pth"]
 
+torch_dtype={
+    "float16": torch.float16,
+    "float32": torch.float32,
+    "bfloat16": torch.bfloat16,
+}
 
 class AutoDownloadBiRefNetModel:
 
@@ -99,6 +105,9 @@ class AutoDownloadBiRefNetModel:
             "required": {
                 "model_name": (modelNameList,),
                 "device": (["AUTO", "CPU"],)
+            },
+            "optional": {
+                "dtype": (["float32", "float16"], {"default": "float32"})
             }
         }
 
@@ -108,7 +117,7 @@ class AutoDownloadBiRefNetModel:
     CATEGORY = "image/BiRefNet"
     DESCRIPTION = "Auto download BiRefNet model from huggingface to models/BiRefNet/{model_name}.safetensors"
 
-    def load_model(self, model_name, device):
+    def load_model(self, model_name, device, dtype="float32"):
         bb_index = 3 if model_name == "General-Lite" or model_name == "General-Lite-2K" else 6
         biRefNet_model = BiRefNet(bb_pretrained=False, bb_index=bb_index)
         model_file_name = f'{model_name}.safetensors'
@@ -122,7 +131,7 @@ class AutoDownloadBiRefNetModel:
             device_type = "cpu"
         state_dict = safetensors.torch.load_file(model_full_path, device=device_type)
         biRefNet_model.load_state_dict(state_dict)
-        biRefNet_model.to(device_type)
+        biRefNet_model.to(device_type, dtype=torch_dtype[dtype])
         biRefNet_model.eval()
         return [(biRefNet_model, VERSION[1])]
 
@@ -137,7 +146,8 @@ class LoadRembgByBiRefNetModel:
                 "device": (["AUTO", "CPU"], )
             },
             "optional": {
-                "use_weight": ("BOOLEAN", {"default": False})
+                "use_weight": ("BOOLEAN", {"default": False}),
+                "dtype": (["float32", "float16"], {"default": "float32"})
             }
         }
 
@@ -147,7 +157,7 @@ class LoadRembgByBiRefNetModel:
     CATEGORY = "rembg/BiRefNet"
     DESCRIPTION = "Load BiRefNet model from folder models/BiRefNet or the path of birefnet configured in the extra YAML file"
 
-    def load_model(self, model, device, use_weight=False):
+    def load_model(self, model, device, use_weight=False, dtype="float32"):
         if model in old_models_name:
             version = VERSION[0]
             biRefNet_model = OldBiRefNet(bb_pretrained=use_weight)
@@ -168,7 +178,7 @@ class LoadRembgByBiRefNetModel:
             state_dict = check_state_dict(state_dict)
 
         biRefNet_model.load_state_dict(state_dict)
-        biRefNet_model.to(device_type)
+        biRefNet_model.to(device_type, dtype=torch_dtype[dtype])
         biRefNet_model.eval()
         return [(biRefNet_model, version)]
 
@@ -211,7 +221,9 @@ class GetMaskByBiRefNet:
 
     def get_mask(self, model, images, width=1024, height=1024, upscale_method='bilinear', mask_threshold=0.000):
         model, version = model
-        model_device_type = next(model.parameters()).device.type
+        one_torch = next(model.parameters())
+        model_device_type = one_torch.device.type
+        model_dtype = one_torch.dtype
         b, h, w, c = images.shape
         image_bchw = images.permute(0, 3, 1, 2)
 
@@ -226,7 +238,7 @@ class GetMaskByBiRefNet:
         _mask_bchw = []
         for each_image in im_tensor:
             with torch.no_grad():
-                each_mask = model(each_image.unsqueeze(0).to(model_device_type))[-1].sigmoid().cpu()
+                each_mask = model(each_image.unsqueeze(0).to(model_device_type, dtype=model_dtype))[-1].sigmoid().cpu().float()
             _mask_bchw.append(each_mask)
             del each_mask
 
