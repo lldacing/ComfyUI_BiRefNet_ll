@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from PIL import Image
 import torchvision.transforms.v2 as T
+import cv2
 
 
 def tensor_to_pil(image):
@@ -44,6 +45,40 @@ def FB_blur_fusion_foreground_estimator(image_tensor, F_tensor, B_tensor, alpha_
     F_tensor = blurred_F + alpha_tensor * (image_tensor - alpha_tensor * blurred_F - (1 - alpha_tensor) * blurred_B)
     F_tensor = torch.clamp(F_tensor, 0, 1)
     return F_tensor, blurred_B
+
+
+### copied and modified image_proc.py
+def refine_foreground_pil(image, mask, r1=90, r2=6):
+    if mask.size != image.size:
+        mask = mask.resize(image.size)
+    image = np.array(image) / 255.0
+    mask = np.array(mask) / 255.0
+    estimated_foreground = FB_blur_fusion_foreground_estimator_pil_2(image, mask, r1=r1, r2=r2)
+    image_masked = Image.fromarray((estimated_foreground * 255.0).astype(np.uint8))
+    return image_masked
+
+
+def FB_blur_fusion_foreground_estimator_pil_2(image, alpha, r1=90, r2=6):
+    # Thanks to the source: https://github.com/Photoroom/fast-foreground-estimation
+    alpha = alpha[:, :, None]
+    F, blur_B = FB_blur_fusion_foreground_estimator_pil(
+        image, image, image, alpha, r=r1)
+    return FB_blur_fusion_foreground_estimator_pil(image, F, blur_B, alpha, r=r2)[0]
+
+
+def FB_blur_fusion_foreground_estimator_pil(image, F, B, alpha, r=90):
+    if isinstance(image, Image.Image):
+        image = np.array(image) / 255.0
+    blurred_alpha = cv2.blur(alpha, (r, r))[:, :, None]
+
+    blurred_FA = cv2.blur(F * alpha, (r, r))
+    blurred_F = blurred_FA / (blurred_alpha + 1e-5)
+
+    blurred_B1A = cv2.blur(B * (1 - alpha), (r, r))
+    blurred_B = blurred_B1A / ((1 - blurred_alpha) + 1e-5)
+    F = blurred_F + alpha * (image - alpha * blurred_F - (1 - alpha) * blurred_B)
+    F = np.clip(F, 0, 1)
+    return F, blurred_B
 
 
 def apply_mask_to_image(image, mask):
@@ -115,7 +150,8 @@ def add_mask_as_alpha(image, mask):
     # 将 mask 扩展为 (b, h, w, 1)
     mask = mask[..., None]
 
-    image = image * mask
+    # 不做点乘，可能会有边缘轮廓线
+    # image = image * mask
     # 将 image 和 mask 拼接为 (b, h, w, 4)
     image_with_alpha = torch.cat([image, mask], dim=-1)
 

@@ -1,4 +1,6 @@
 import os
+import random
+import numpy as np
 import cv2
 from tqdm import tqdm
 from PIL import Image
@@ -32,12 +34,10 @@ class_labels_TR_sorted = _class_labels_TR_sorted.split(', ')
 
 
 class MyData(data.Dataset):
-    def __init__(self, datasets, image_size, is_train=True):
-        self.size_train = image_size
-        self.size_test = image_size
-        self.keep_size = not config.size
-        self.data_size = config.size
+    def __init__(self, datasets, data_size, is_train=True):
+        # data_size is None when using dynamic_size or data_size is manually set to None (for inference in the original size).
         self.is_train = is_train
+        self.data_size = data_size
         self.load_all = config.load_all
         self.device = config.device
         valid_extensions = ['.png', '.jpg', '.PNG', '.JPG', '.JPEG']
@@ -45,14 +45,12 @@ class MyData(data.Dataset):
         if self.is_train and config.auxiliary_classification:
             self.cls_name2id = {_name: _id for _id, _name in enumerate(class_labels_TR_sorted)}
         self.transform_image = transforms.Compose([
-            transforms.Resize(self.data_size[::-1]),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ][self.load_all or self.keep_size:])
+        ])
         self.transform_label = transforms.Compose([
-            transforms.Resize(self.data_size[::-1]),
             transforms.ToTensor(),
-        ][self.load_all or self.keep_size:])
+        ])
         dataset_root = os.path.join(config.data_root_dir, config.task)
         # datasets can be a list of different datasets for training on combined sets.
         self.image_paths = []
@@ -83,8 +81,8 @@ class MyData(data.Dataset):
             self.class_labels_loaded = []
             # for image_path, label_path in zip(self.image_paths, self.label_paths):
             for image_path, label_path in tqdm(zip(self.image_paths, self.label_paths), total=len(self.image_paths)):
-                _image = path_to_image(image_path, size=config.size, color_type='rgb')
-                _label = path_to_image(label_path, size=config.size, color_type='gray')
+                _image = path_to_image(image_path, size=self.data_size, color_type='rgb')
+                _label = path_to_image(label_path, size=self.data_size, color_type='gray')
                 self.images_loaded.append(_image)
                 self.labels_loaded.append(_label)
                 self.class_labels_loaded.append(
@@ -92,25 +90,57 @@ class MyData(data.Dataset):
                 )
 
     def __getitem__(self, index):
-
         if self.load_all:
             image = self.images_loaded[index]
             label = self.labels_loaded[index]
             class_label = self.class_labels_loaded[index] if self.is_train and config.auxiliary_classification else -1
         else:
-            image = path_to_image(self.image_paths[index], size=config.size, color_type='rgb')
-            label = path_to_image(self.label_paths[index], size=config.size, color_type='gray')
+            image = path_to_image(self.image_paths[index], size=self.data_size, color_type='rgb')
+            label = path_to_image(self.label_paths[index], size=self.data_size, color_type='gray')
             class_label = self.cls_name2id[self.label_paths[index].split('/')[-1].split('#')[3]] if self.is_train and config.auxiliary_classification else -1
 
         # loading image and label
         if self.is_train:
+            if config.background_color_synthesis:
+                image.putalpha(label)
+                array_image = np.array(image)
+                array_foreground = array_image[:, :, :3].astype(np.float32)
+                array_mask = (array_image[:, :, 3:] / 255).astype(np.float32)
+                array_background = np.zeros_like(array_foreground)
+                choice = random.random()
+                if choice < 0.4:
+                    # Black/Gray/White backgrounds
+                    array_background[:, :, :] = random.randint(0, 255)
+                elif choice < 0.8:
+                    # Background color that similar to the foreground object. Hard negative samples.
+                    foreground_pixel_number = np.sum(array_mask > 0)
+                    color_foreground_mean = np.mean(array_foreground * array_mask, axis=(0, 1)) * (np.prod(array_foreground.shape[:2]) / foreground_pixel_number)
+                    color_up_or_down = random.choice((-1, 1))
+                    # Up or down for 20% range from 255 or 0, respectively.
+                    color_foreground_mean += (255 - color_foreground_mean if color_up_or_down == 1 else color_foreground_mean) * (random.random() * 0.2) * color_up_or_down
+                    array_background[:, :, :] = color_foreground_mean
+                else:
+                    # Any color
+                    for idx_channel in range(3):
+                        array_background[:, :, idx_channel] = random.randint(0, 255)
+                array_foreground_background = array_foreground * array_mask + array_background * (1 - array_mask)
+                image = Image.fromarray(array_foreground_background.astype(np.uint8))
             image, label = preproc(image, label, preproc_methods=config.preproc_methods)
         # else:
         #     if _label.shape[0] > 2048 or _label.shape[1] > 2048:
         #         _image = cv2.resize(_image, (2048, 2048), interpolation=cv2.INTER_LINEAR)
         #         _label = cv2.resize(_label, (2048, 2048), interpolation=cv2.INTER_LINEAR)
 
-        image, label = self.transform_image(image), self.transform_label(label)
+        # At present, we use fixed sizes in inference, instead of consistent dynamic size with training.
+        if self.is_train:
+            if config.dynamic_size is None:
+                image, label = self.transform_image(image), self.transform_label(label)
+        else:
+            size_div_32 = (int(image.size[0] // 32 * 32), int(image.size[1] // 32 * 32))
+            if image.size != size_div_32:
+                image = image.resize(size_div_32)
+                label = label.resize(size_div_32)
+            image, label = self.transform_image(image), self.transform_label(label)
 
         if self.is_train:
             return image, label, class_label
@@ -119,3 +149,25 @@ class MyData(data.Dataset):
 
     def __len__(self):
         return len(self.image_paths)
+
+
+def custom_collate_fn(batch):
+    if config.dynamic_size:
+        dynamic_size = tuple(sorted(config.dynamic_size))
+        dynamic_size_batch = (random.randint(dynamic_size[0][0], dynamic_size[0][1]) // 32 * 32, random.randint(dynamic_size[1][0], dynamic_size[1][1]) // 32 * 32) # select a value randomly in the range of [dynamic_size[0/1][0], dynamic_size[0/1][1]].
+        data_size = dynamic_size_batch
+    else:
+        data_size = config.size
+    new_batch = []
+    transform_image = transforms.Compose([
+        transforms.Resize(data_size[::-1]),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ])
+    transform_label = transforms.Compose([
+        transforms.Resize(data_size[::-1]),
+        transforms.ToTensor(),
+    ])
+    for image, label, class_label in batch:
+        new_batch.append((transform_image(image), transform_label(label), class_label))
+    return data._utils.collate.default_collate(new_batch)

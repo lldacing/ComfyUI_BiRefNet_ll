@@ -9,7 +9,7 @@ import folder_paths
 from birefnet.models.birefnet import BiRefNet
 from birefnet_old.models.birefnet import BiRefNet as OldBiRefNet
 from birefnet.utils import check_state_dict
-from .util import refine_foreground, filter_mask, add_mask_as_alpha
+from .util import filter_mask, add_mask_as_alpha, refine_foreground_pil, tensor_to_pil, pil_to_tensor
 deviceType = model_management.get_torch_device().type
 
 models_dir_key = "birefnet"
@@ -264,8 +264,8 @@ class BlurFusionForegroundEstimation:
             "required": {
                 "images": ("IMAGE",),
                 "masks": ("MASK",),
-                "blur_size": ("INT", {"default": 91, "min": 1, "max": 255, "step": 2, }),
-                "blur_size_two": ("INT", {"default": 7, "min": 1, "max": 255, "step": 2, }),
+                "blur_size": ("INT", {"default": 90, "min": 1, "max": 255, "step": 1, }),
+                "blur_size_two": ("INT", {"default": 6, "min": 1, "max": 255, "step": 1, }),
                 "fill_color": ("BOOLEAN", {"default": False}),
                 "color": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFF, "step": 1, "display": "color"}),
             }
@@ -282,16 +282,19 @@ class BlurFusionForegroundEstimation:
         if b != masks.shape[0]:
             raise ValueError("images and masks must have the same batch size")
 
-        image_bchw = images.permute(0, 3, 1, 2)
+        # image_bchw = images.permute(0, 3, 1, 2)
 
         if masks.dim() == 3:
             # (b, h, w) => (b, 1, h, w)
             out_masks = masks.unsqueeze(1)
 
+        # 需要转成pil用cv2.blur，结果图的背景色比较纯（gaussian_blur的背景色不纯，边缘轮廓线比较重），应用遮罩时不能用点乘，结果可能有边缘轮廓
+        _image_masked = refine_foreground_pil(tensor_to_pil(images), tensor_to_pil(out_masks.permute(0, 2, 3, 1)))
+        _image_masked = pil_to_tensor(_image_masked)
         # (b, c, h, w)
-        _image_masked = refine_foreground(image_bchw, out_masks, r1=blur_size, r2=blur_size_two)
+        # _image_masked = refine_foreground(image_bchw, out_masks, r1=blur_size, r2=blur_size_two)
         # (b, c, h, w) => (b, h, w, c)
-        _image_masked = _image_masked.permute(0, 2, 3, 1)
+        # _image_masked = _image_masked.permute(0, 2, 3, 1)
         if fill_color and color is not None:
             r = torch.full([b, h, w, 1], ((color >> 16) & 0xFF) / 0xFF)
             g = torch.full([b, h, w, 1], ((color >> 8) & 0xFF) / 0xFF)
@@ -342,8 +345,8 @@ class RembgByBiRefNetAdvanced(GetMaskByBiRefNet, BlurFusionForegroundEstimation)
                                        "default": "bilinear",
                                        "tooltip": "Interpolation method for pre-processing image and post-processing mask"
                                    }),
-                "blur_size": ("INT", {"default": 91, "min": 1, "max": 255, "step": 2, }),
-                "blur_size_two": ("INT", {"default": 7, "min": 1, "max": 255, "step": 2, }),
+                "blur_size": ("INT", {"default": 90, "min": 1, "max": 255, "step": 1, }),
+                "blur_size_two": ("INT", {"default": 6, "min": 1, "max": 255, "step": 1, }),
                 "fill_color": ("BOOLEAN", {"default": False}),
                 "color": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFF, "step": 1, "display": "color"}),
                 "mask_threshold": ("FLOAT", {"default": 0.000, "min": 0.0, "max": 1.0, "step": 0.001, }),

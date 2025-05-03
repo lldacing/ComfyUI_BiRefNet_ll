@@ -16,7 +16,7 @@ try:
 except Exception:
     from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
-from birefnet.config import Config
+from ...config import Config
 
 
 config = Config()
