@@ -289,8 +289,17 @@ class BlurFusionForegroundEstimation:
             out_masks = masks.unsqueeze(1)
 
         # 需要转成pil用cv2.blur，结果图的背景色比较纯（gaussian_blur的背景色不纯，边缘轮廓线比较重），应用遮罩时不能用点乘，结果可能有边缘轮廓
-        _image_masked = refine_foreground_pil(tensor_to_pil(images), tensor_to_pil(out_masks.permute(0, 2, 3, 1)))
-        _image_masked = pil_to_tensor(_image_masked)
+        _image_maskeds = []
+        # for _image, _out_mask in images, out_masks:
+        for idx, (_image, _out_mask) in enumerate(zip(images.unbind(dim=0), out_masks.unbind(dim=0))):
+            _image_masked = refine_foreground_pil(tensor_to_pil(_image), tensor_to_pil(_out_mask.permute(1, 2, 0)))
+            _image_masked = pil_to_tensor(_image_masked)
+            _image_maskeds.append(_image_masked)
+            del _image_masked
+
+        _image_masked_torch = torch.cat(_image_maskeds, dim=0)
+        del _image_maskeds
+
         # (b, c, h, w)
         # _image_masked = refine_foreground(image_bchw, out_masks, r1=blur_size, r2=blur_size_two)
         # (b, c, h, w) => (b, h, w, c)
@@ -302,8 +311,8 @@ class BlurFusionForegroundEstimation:
             # (b, h, w, 3)
             background_color = torch.cat((r, g, b), dim=-1)
             # (b, 1, h, w) => (b, h, w, 3)
-            apply_mask = out_masks.permute(0, 2, 3, 1).expand_as(_image_masked)
-            out_images = _image_masked * apply_mask + background_color * (1 - apply_mask)
+            apply_mask = out_masks.permute(0, 2, 3, 1).expand_as(_image_masked_torch)
+            out_images = _image_masked_torch * apply_mask + background_color * (1 - apply_mask)
             # (b, h, w, 3)=>(b, h, w, 3)
             del background_color, apply_mask
             out_masks = out_masks.squeeze(1)
@@ -311,9 +320,9 @@ class BlurFusionForegroundEstimation:
             # (b, 1, h, w) => (b, h, w)
             out_masks = out_masks.squeeze(1)
             # image的非mask对应部分设为透明 => (b, h, w, 4)
-            out_images = add_mask_as_alpha(_image_masked.cpu(), out_masks.cpu())
+            out_images = add_mask_as_alpha(_image_masked_torch.cpu(), out_masks.cpu())
 
-        del _image_masked
+        del _image_masked_torch
 
         return out_images, out_masks
 
