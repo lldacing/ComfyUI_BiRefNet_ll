@@ -297,7 +297,7 @@ class BlurFusionForegroundEstimation:
             _image_maskeds.append(_image_masked)
             del _image_masked
 
-        _image_masked_torch = torch.cat(_image_maskeds, dim=0)
+        _image_masked_tensor = torch.cat(_image_maskeds, dim=0)
         del _image_maskeds
 
         # (b, c, h, w)
@@ -311,8 +311,8 @@ class BlurFusionForegroundEstimation:
             # (b, h, w, 3)
             background_color = torch.cat((r, g, b), dim=-1)
             # (b, 1, h, w) => (b, h, w, 3)
-            apply_mask = out_masks.permute(0, 2, 3, 1).expand_as(_image_masked_torch)
-            out_images = _image_masked_torch * apply_mask + background_color * (1 - apply_mask)
+            apply_mask = out_masks.permute(0, 2, 3, 1).expand_as(_image_masked_tensor)
+            out_images = _image_masked_tensor * apply_mask + background_color * (1 - apply_mask)
             # (b, h, w, 3)=>(b, h, w, 3)
             del background_color, apply_mask
             out_masks = out_masks.squeeze(1)
@@ -320,9 +320,9 @@ class BlurFusionForegroundEstimation:
             # (b, 1, h, w) => (b, h, w)
             out_masks = out_masks.squeeze(1)
             # image的非mask对应部分设为透明 => (b, h, w, 4)
-            out_images = add_mask_as_alpha(_image_masked_torch.cpu(), out_masks.cpu())
+            out_images = add_mask_as_alpha(_image_masked_tensor.cpu(), out_masks.cpu())
 
-        del _image_masked_torch
+        del _image_masked_tensor
 
         return out_images, out_masks
 
