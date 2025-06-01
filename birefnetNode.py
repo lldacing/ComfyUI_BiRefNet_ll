@@ -19,17 +19,23 @@ models_path_default = folder_paths.get_folder_paths(models_dir_key)[0]
 usage_to_weights_file = {
     'General': 'BiRefNet',
     'General-HR': 'BiRefNet_HR',
-    'General-Lite': 'BiRefNet_T',
+    'Matting-HR': 'BiRefNet_HR-matting',
+    'General-Lite': 'BiRefNet_lite',
     'General-Lite-2K': 'BiRefNet_lite-2K',
+    'General-reso_512': 'BiRefNet_512x512',
     'Portrait': 'BiRefNet-portrait',
     'Matting': 'BiRefNet-matting',
+    'Matting-Lite': 'BiRefNet_lite-matting',
+    # 'Anime-Lite': 'BiRefNet_lite-Anime',
     'DIS': 'BiRefNet-DIS5K',
     'HRSOD': 'BiRefNet-HRSOD',
     'COD': 'BiRefNet-COD',
-    'DIS-TR_TEs': 'BiRefNet-DIS5K-TR_TEs'
+    'DIS-TR_TEs': 'BiRefNet-DIS5K-TR_TEs',
+    'General-legacy': 'BiRefNet-legacy',
+    'General-dynamic': 'BiRefNet_dynamic',
 }
 
-modelNameList = ['General', 'General-HR', 'General-Lite', 'General-Lite-2K', 'Portrait', 'Matting', 'DIS', 'HRSOD', 'COD', 'DIS-TR_TEs']
+modelNameList = list(usage_to_weights_file.keys())
 
 
 def get_model_path(model_name):
@@ -118,7 +124,7 @@ class AutoDownloadBiRefNetModel:
     DESCRIPTION = "Auto download BiRefNet model from huggingface to models/BiRefNet/{model_name}.safetensors"
 
     def load_model(self, model_name, device, dtype="float32"):
-        bb_index = 3 if model_name == "General-Lite" or model_name == "General-Lite-2K" else 6
+        bb_index = 3 if model_name == "General-Lite" or model_name == "General-Lite-2K" or model_name == "Matting-Lite" else 6
         biRefNet_model = BiRefNet(bb_pretrained=False, bb_index=bb_index)
         model_file_name = f'{model_name}.safetensors'
         model_full_path = folder_paths.get_full_path(models_dir_key, model_file_name)
@@ -163,7 +169,7 @@ class LoadRembgByBiRefNetModel:
             biRefNet_model = OldBiRefNet(bb_pretrained=use_weight)
         else:
             version = VERSION[1]
-            bb_index = 3 if model == "General-Lite.safetensors" or model == "General-Lite-2K.safetensors" else 6
+            bb_index = 3 if model == "General-Lite.safetensors" or model == "General-Lite-2K.safetensors" or model == "Matting-Lite.safetensors" else 6
             biRefNet_model = BiRefNet(bb_pretrained=use_weight, bb_index=bb_index)
 
         model_path = folder_paths.get_full_path(models_dir_key, model)
