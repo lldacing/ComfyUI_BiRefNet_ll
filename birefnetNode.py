@@ -298,7 +298,12 @@ class BlurFusionForegroundEstimation:
         _image_maskeds = []
         # for _image, _out_mask in images, out_masks:
         for idx, (_image, _out_mask) in enumerate(zip(images.unbind(dim=0), out_masks.unbind(dim=0))):
-            _image_masked = refine_foreground_pil(tensor_to_pil(_image), tensor_to_pil(_out_mask.permute(1, 2, 0)))
+            _image_masked = refine_foreground_pil(
+                tensor_to_pil(_image),
+                tensor_to_pil(_out_mask.permute(1, 2, 0)),
+                r1=blur_size,
+                r2=blur_size_two,
+            )
             _image_masked = pil_to_tensor(_image_masked)
             _image_maskeds.append(_image_masked)
             del _image_masked
